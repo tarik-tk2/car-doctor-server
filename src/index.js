@@ -1,12 +1,13 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
 const express = require("express");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
-
+var cors = require("cors");
 const app = express();
-const port = 3000;
-
-
-const uri = `mongodb+srv://${process.env.DB_NAME}:${process.env.DB_PASSWORD}@cluster0.a5frw0k.mongodb.net/?retryWrites=true&w=majority`;
+app.use(cors());
+app.use(express.json());
+const port = 4000;
+console.log("hello", process.env.DB_NAME);
+const uri = `mongodb+srv://${process.env.DB_NAME}:${process.env.DB_PASSWORD}@cluster0.woqsvm5.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -22,19 +23,53 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-   
+    const database = client.db("car-doctor");
+    const services = database.collection("services");
+     const booking = database.collection("bookings");
+    app.get("/services", async (req, res) => {
+      const allService = await services.find({}).toArray();
+      res.send(allService);
+    });
+    // single service
+    
+    app.get("/service/:id", async (req, res) => {
+      const reqId = req.params.id;
+    
+      const query = { _id: reqId };
+      const options = {
+        projection: { title: 1, service_id: 1, img: 1, price: 1 },
+      };
+      const service = await services.findOne(query, options);
+      res.send(service);
+    });
+    app.post("/booking", async (req, res) => {
+      const reqBody = req.body;
+      const result = await booking.insertOne(reqBody);
+      res.send(result);
+
+    })
+    app.get('/bookings',async (req, res) => {
+      const query = {};
+      if (req.query?.email) {
+        const query={email: req.query.email}
+      }
+      const find = await booking.find(query).toArray();
+      res.send(find);
+    }
+    )
+    app.delete('/booking/:id', async (req, res) => {
+      const query = { _id: new ObjectId(req.params.id) }
+     
+      const result = await booking.deleteOne(query);
+      res.send(result)
+    })
+  
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+    // await client.close();
   }
 }
 run().catch(console.dir);
-
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
-
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
