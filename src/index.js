@@ -1,4 +1,5 @@
 const express = require("express");
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 var cors = require("cors");
@@ -25,9 +26,13 @@ async function run() {
     // Send a ping to confirm a successful connection
     const database = client.db("car-doctor");
     const services = database.collection("services");
-     const booking = database.collection("bookings");
+    const booking = database.collection("bookings");
+    const products = database.collection("products");
     app.get("/services", async (req, res) => {
-      const allService = await services.find({}).toArray();
+      const { page, limit } = req.query;
+      const skip = (page - 1) * limit;
+
+      const allService = await services.find({}).skip(skip).limit(parseInt(limit)).toArray();
       res.send(allService);
     });
     // single service
@@ -50,11 +55,13 @@ async function run() {
     })
     app.get('/bookings',async (req, res) => {
       const query = {};
-      if (req.query?.email) {
-        const query={email: req.query.email}
+      if (req.query?.email) {      
+        const query = { email: req.query.email }
+        const find = await booking.find(query).toArray();
+        res.send(find);
       }
-      const find = await booking.find(query).toArray();
-      res.send(find);
+ 
+      
     }
     )
     app.delete('/booking/:id', async (req, res) => {
@@ -63,6 +70,21 @@ async function run() {
       const result = await booking.deleteOne(query);
       res.send(result)
     })
+    // products api
+    app.get("/products", async (req, res) => { 
+      const { page, limit } = req.query;
+      const skip = (page - 1) * limit;
+      const allProducts = await products.find({}).skip(skip).limit(parseInt(limit)).toArray();
+      res.send(allProducts)
+    })
+    app.get("/product/:id", async (req, res) => {
+      const reqId = req.params.id;
+      const query={_id:reqId}
+      const findProduct = await products.findOne(query);
+      res.send(findProduct);
+    })
+
+
   
   } finally {
     // Ensures that the client will close when you finish/error
